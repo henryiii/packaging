@@ -24,7 +24,7 @@ from .licenses import NormalizedLicenseExpression
 T = typing.TypeVar("T")
 
 
-if sys.version_info < (3, 11):
+if sys.version_info < (3, 11):  # pragma: no cover
 
     class ExceptionGroup(Exception):
         """A minimal implementation of :external:exc:`ExceptionGroup` from Python 3.11.
