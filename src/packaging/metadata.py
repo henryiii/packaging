@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-import builtins
 import email.feedparser
 import email.header
 import email.message
 import email.parser
 import email.policy
 import pathlib
+import sys
 import typing
 from typing import (
     Any,
@@ -24,7 +24,7 @@ from .licenses import NormalizedLicenseExpression
 T = typing.TypeVar("T")
 
 
-if "ExceptionGroup" not in builtins.__dict__:  # pragma: no cover
+if sys.version_info < (3, 11):
 
     class ExceptionGroup(Exception):
         """A minimal implementation of :external:exc:`ExceptionGroup` from Python 3.11.
@@ -43,7 +43,7 @@ if "ExceptionGroup" not in builtins.__dict__:  # pragma: no cover
         def __repr__(self) -> str:
             return f"{self.__class__.__name__}({self.message!r}, {self.exceptions!r})"
 else:  # pragma: no cover
-    ExceptionGroup = builtins.ExceptionGroup  # type: ignore[assignment, misc]
+    from builtins import ExceptionGroup
 
 
 class InvalidMetadata(ValueError):
