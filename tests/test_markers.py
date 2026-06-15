@@ -433,6 +433,12 @@ class TestMarker:
         )
         assert marker.evaluate({"extra": "foo-bar", "python_version": "3.12"})
 
+    def test_extra_variable_operand_not_normalized(self) -> None:
+        # A variable on the other side of an ``extra`` comparison must not be
+        # rewritten into a string literal by PEP 685 normalization.
+        assert str(Marker("extra == os_name")) == "extra == os_name"
+        assert str(Marker("os_name == extra")) == "os_name == extra"
+
     def test_python_full_version_untagged_user_provided(self) -> None:
         """A user-provided python_full_version ending with a + is also repaired."""
         assert Marker("python_full_version < '3.12'").evaluate(
