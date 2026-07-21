@@ -7,14 +7,10 @@ from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any, Protocol, TypeVar
 
 if TYPE_CHECKING:  # pragma: no cover
-    import sys
     from collections.abc import Collection
     from urllib.parse import SplitResult
 
-    if sys.version_info >= (3, 11):
-        from typing import Self
-    else:
-        from typing_extensions import Self
+    from typing_extensions import Self
 
 __all__ = [
     "ArchiveInfo",
