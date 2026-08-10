@@ -113,6 +113,13 @@ Reference
 
         Added ``__replace__``, enabling :func:`copy.replace` on Python 3.13+.
 
+    .. deprecated:: 26.4
+
+        Setting attributes on an existing instance is deprecated
+        and will raise an error in a future release. Instances are hashable,
+        and mutation silently breaks set and dict membership. Construct a new
+        ``Requirement`` or use :func:`copy.replace` instead.
+
     :param str requirement_string: The string representation of a requirement.
     :raises InvalidRequirement: If the given ``requirement_string`` is not parseable,
                                 then this exception will be raised.

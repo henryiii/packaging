@@ -1055,6 +1055,16 @@ def test_pickle_requirement_25_0_format_loads() -> None:
     assert r == Requirement("requests>=2.0")
 
 
+def test_mutation_deprecated() -> None:
+    r = Requirement("requests>=2.0")
+    with pytest.deprecated_call(match="immutable"):
+        r.name = "flask"
+    assert r.name == "flask"
+    # Reads, construction, and str() must stay warning-free (warnings are
+    # errors in this test suite).
+    assert Requirement("requests>=2.0") == Requirement("requests>=2.0")
+
+
 def test_replace() -> None:
     r = Requirement('requests[security]>=2.0; python_version >= "3"')
     r2 = r.__replace__(name="flask", url="https://example.com/flask.zip")

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import builtins
 import sys
+import warnings
 from typing import TYPE_CHECKING, Any
 
 from ._parser import parse_requirement as _parse_requirement
@@ -81,6 +82,13 @@ class Requirement:
     .. versionchanged:: 26.4
 
         Added ``__replace__``, enabling :func:`copy.replace` on Python 3.13+.
+
+    .. deprecated:: 26.4
+
+        Setting attributes on an existing instance is deprecated
+        and will raise an error in a future release; instances are hashable,
+        and mutation silently breaks set / dict membership. Construct a new
+        ``Requirement`` or use :func:`copy.replace` instead.
     """
 
     # TODO: Can we test whether something is contained within a requirement?
@@ -90,23 +98,30 @@ class Requirement:
 
     __slots__ = ("extras", "marker", "name", "specifier", "url")
 
+    name: str
+    url: str | None
+    extras: set[str]
+    specifier: SpecifierSet
+    marker: Marker | None
+
     def __init__(self, requirement_string: str) -> None:
         try:
             parsed = _parse_requirement(requirement_string)
         except ParserSyntaxError as e:
             raise InvalidRequirement(str(e)) from e
 
-        self.name: str = parsed.name
-        self.url: str | None = parsed.url or None
-        self.extras: set[str] = set(parsed.extras)
+        object.__setattr__(self, "name", parsed.name)
+        object.__setattr__(self, "url", parsed.url or None)
+        object.__setattr__(self, "extras", set(parsed.extras))
         try:
-            self.specifier: SpecifierSet = SpecifierSet(parsed.specifier)
+            object.__setattr__(self, "specifier", SpecifierSet(parsed.specifier))
         except InvalidSpecifier as e:
             raise InvalidRequirement(str(e)) from e
-        self.marker: Marker | None = None
+        marker: Marker | None = None
         if parsed.marker is not None:
-            self.marker = Marker.__new__(Marker)
-            self.marker._markers = _normalize_extra_values(parsed.marker)
+            marker = Marker.__new__(Marker)
+            marker._markers = _normalize_extra_values(parsed.marker)
+        object.__setattr__(self, "marker", marker)
 
     def __replace__(
         self,
@@ -136,6 +151,21 @@ class Requirement:
                 result, slot, getattr(self, slot) if value is _UNSET else value
             )
         return result
+
+    if not TYPE_CHECKING:  # pragma: no branch
+        # Hidden from type checkers so they keep rejecting unknown attributes
+        # instead of treating any name as settable.
+        def __setattr__(self, name: str, value: object) -> None:
+            # Unknown names still raise AttributeError without a warning.
+            if name in self.__slots__:
+                warnings.warn(
+                    "Requirement will become immutable in a future release; "
+                    "setting attributes is deprecated. Construct a new "
+                    "Requirement or use copy.replace() instead.",
+                    DeprecationWarning,
+                    stacklevel=2,
+                )
+            object.__setattr__(self, name, value)
 
     def _iter_parts(self, name: str) -> Iterator[str]:
         yield name
@@ -178,7 +208,7 @@ class Requirement:
         elif isinstance(state, dict) and state.keys() >= set(self.__slots__):
             # Old format (packaging <= 26.1, no __slots__): plain __dict__.
             for key in self.__slots__:
-                setattr(self, key, state[key])
+                object.__setattr__(self, key, state[key])
             return
         else:
             raise TypeError(f"Cannot restore Requirement from {state!r}")
@@ -187,12 +217,12 @@ class Requirement:
             tmp = Requirement(requirement_string)
         except InvalidRequirement as exc:
             raise TypeError(f"Cannot restore Requirement from {state!r}") from exc
-        self.name = tmp.name
-        self.url = tmp.url
-        self.extras = tmp.extras
-        self.specifier = tmp.specifier
+        object.__setattr__(self, "name", tmp.name)
+        object.__setattr__(self, "url", tmp.url)
+        object.__setattr__(self, "extras", tmp.extras)
+        object.__setattr__(self, "specifier", tmp.specifier)
         self.specifier._prereleases = prereleases
-        self.marker = tmp.marker
+        object.__setattr__(self, "marker", tmp.marker)
 
     def __str__(self) -> str:
         return "".join(self._iter_parts(self.name))
