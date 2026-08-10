@@ -3,7 +3,9 @@
 # for complete details.
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+import builtins
+import sys
+from typing import TYPE_CHECKING, Any
 
 from ._parser import parse_requirement as _parse_requirement
 from ._tokenizer import ParserSyntaxError
@@ -22,6 +24,11 @@ __all__ = [
 
 def __dir__() -> list[str]:
     return __all__
+
+
+# Sentinel for __replace__, typed as Any so it can be the default for any field.
+# mypy is missing sentinel currently
+_UNSET: Any = object() if sys.version_info < (3, 15) else builtins.sentinel("_UNSET")  # type: ignore[attr-defined]
 
 
 class InvalidRequirement(ValueError):
@@ -70,6 +77,10 @@ class Requirement:
         Equality and hashing normalize requirement names, extras, and
         equivalent specifiers. The string representation still preserves the
         parsed name and extras spelling.
+
+    .. versionchanged:: 26.4
+
+        Added ``__replace__``, enabling :func:`copy.replace` on Python 3.13+.
     """
 
     # TODO: Can we test whether something is contained within a requirement?
@@ -96,6 +107,35 @@ class Requirement:
         if parsed.marker is not None:
             self.marker = Marker.__new__(Marker)
             self.marker._markers = _normalize_extra_values(parsed.marker)
+
+    def __replace__(
+        self,
+        *,
+        name: str = _UNSET,
+        url: str | None = _UNSET,
+        extras: set[str] = _UNSET,
+        specifier: SpecifierSet = _UNSET,
+        marker: Marker | None = _UNSET,
+    ) -> Requirement:
+        """Return a copy with the given fields replaced.
+
+        This also enables :func:`copy.replace` on Python 3.13+. Replacement
+        values are used as-is; they are not validated or normalized.
+
+        .. versionadded:: 26.4
+        """
+        result = Requirement.__new__(Requirement)
+        for slot, value in (
+            ("name", name),
+            ("url", url),
+            ("extras", extras),
+            ("specifier", specifier),
+            ("marker", marker),
+        ):
+            object.__setattr__(
+                result, slot, getattr(self, slot) if value is _UNSET else value
+            )
+        return result
 
     def _iter_parts(self, name: str) -> Iterator[str]:
         yield name

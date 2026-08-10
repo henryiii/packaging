@@ -4,7 +4,9 @@
 
 from __future__ import annotations
 
+import copy
 import pickle
+import sys
 
 import pytest
 
@@ -1051,3 +1053,32 @@ def test_pickle_requirement_25_0_format_loads() -> None:
     assert str(r.specifier) == ">=2.0"
     assert r.marker is None
     assert r == Requirement("requests>=2.0")
+
+
+def test_replace() -> None:
+    r = Requirement('requests[security]>=2.0; python_version >= "3"')
+    r2 = r.__replace__(name="flask", url="https://example.com/flask.zip")
+    assert r2.name == "flask"
+    assert r2.url == "https://example.com/flask.zip"
+    assert r2.extras == r.extras
+    assert r2.specifier == r.specifier
+    assert r2.marker == r.marker
+    # The original is untouched.
+    assert r.name == "requests"
+    assert r.url is None
+    # No changes gives an equal but distinct instance.
+    r3 = r.__replace__()
+    assert r3 == r
+    assert r3 is not r
+    with pytest.raises(TypeError):
+        r.__replace__(nonexistent=1)  # type: ignore[call-arg]
+
+
+@pytest.mark.skipif(
+    sys.version_info < (3, 13), reason="copy.replace() requires Python 3.13"
+)
+def test_copy_replace() -> None:
+    r = Requirement("requests>=2.0")
+    r2 = copy.replace(r, specifier=SpecifierSet(">=3.0"))  # type: ignore[attr-defined]
+    assert str(r2) == "requests>=3.0"
+    assert str(r) == "requests>=2.0"
